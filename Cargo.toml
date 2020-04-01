@@ -2,4 +2,5 @@
 
 members = [
 	"abbreviations_simple",
+	"dragon_curve",
 ]
