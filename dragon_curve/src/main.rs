@@ -8,6 +8,10 @@ use ggez::{
 };
 use std::time::Duration;
 
+// L-System to create the sequence needed for a Dragon Curve.
+// This function creates the next generation given the current one
+// L-System from https://www.cs.unm.edu/~joel/PaperFoldingFractal/L-system-rules.html
+//
 fn l_system_next_generation(current_generation: &str) -> String {
     let f_rule = "f-h";
     let h_rule = "f+h";
@@ -23,31 +27,47 @@ fn l_system_next_generation(current_generation: &str) -> String {
     next_gen
 }
 
+// The rest of the code is for drawing the output and is specific to using the
+// ggez 2d game library for the drawing: https://ggez.rs/
+
+const WINDOW_WIDTH: f32 = 700.0;
+const WINDOW_HEIGHT: f32 = 700.0;
+const START_X: f32 = WINDOW_WIDTH / 4.0;
+const START_Y: f32 = WINDOW_HEIGHT / 4.0;
+
 struct MainState {
     start_gen: String,
     next_gen: String,
     line_length: f32,
+    max_depth: i32,
+    current_depth: i32,
 }
 
 impl MainState {
     fn new() -> GameResult<MainState> {
         let start_gen = "f";
         let next_gen = String::new();
-        let line_length = 21.0;
+        let line_length = 20.0;
+        let max_depth = 20;
+        let current_depth = 0;
         Ok(MainState {
             start_gen: start_gen.to_string(),
             next_gen,
             line_length,
+            max_depth,
+            current_depth,
         })
     }
 }
 
 impl event::EventHandler for MainState {
+    //
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
-        if self.next_gen.len() < 1_000_000 {
+        if self.current_depth < self.max_depth {
             self.next_gen = l_system_next_generation(&self.start_gen);
             self.start_gen = self.next_gen.clone();
-            self.line_length -= 1.0;
+            self.line_length -= (self.line_length / self.max_depth as f32) * 1.7;
+            self.current_depth += 1;
         }
         ggez::timer::sleep(Duration::from_millis(1000));
         Ok(())
@@ -75,10 +95,8 @@ fn draw_lines(instructions: &str, ctx: &mut Context, line_length: f32) -> GameRe
     let line_width = 2.0;
     let mut heading = 0.0;
     let turn_angle = 90.0;
-    let initial_point = Point2::new(100.0, 100.0);
-
+    let initial_point = Point2::new(START_X, START_Y);
     let mut start_point = initial_point;
-
     let mut line_builder = MeshBuilder::new();
     for char in instructions.chars() {
         let end_point = next_point(start_point, heading, line_length);
@@ -100,7 +118,7 @@ fn draw_lines(instructions: &str, ctx: &mut Context, line_length: f32) -> GameRe
 fn main() -> GameResult {
     let cb = ggez::ContextBuilder::new("dragon curve", "huw")
         .window_setup(WindowSetup::default().title("Dragon curve"))
-        .window_mode(WindowMode::default().dimensions(700.0, 700.0));
+        .window_mode(WindowMode::default().dimensions(WINDOW_WIDTH, WINDOW_HEIGHT));
     let (ctx, event_loop) = &mut cb.build()?;
     let state = &mut MainState::new()?;
     event::run(ctx, event_loop, state)
