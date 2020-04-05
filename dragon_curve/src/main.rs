@@ -32,8 +32,9 @@ fn l_system_next_generation(current_generation: &str) -> String {
 
 const WINDOW_WIDTH: f32 = 700.0;
 const WINDOW_HEIGHT: f32 = 700.0;
-const START_X: f32 = WINDOW_WIDTH / 4.0;
+const START_X: f32 = WINDOW_WIDTH / 6.0;
 const START_Y: f32 = WINDOW_HEIGHT / 4.0;
+const MAX_DEPTH: i32 = 20;
 
 struct MainState {
     start_gen: String,
@@ -48,7 +49,7 @@ impl MainState {
         let start_gen = "f";
         let next_gen = String::new();
         let line_length = 20.0;
-        let max_depth = 20;
+        let max_depth = MAX_DEPTH;
         let current_depth = 0;
         Ok(MainState {
             start_gen: start_gen.to_string(),
@@ -61,6 +62,11 @@ impl MainState {
 }
 
 impl event::EventHandler for MainState {
+    // In each repetition of the event loop a new generation of the L-System
+    // is generated and drawn, until the maximum depth is reached.
+    // Each time the line length is reduced so that the overall dragon curve
+    // can be seen in the window as it spirals and gets bigger.
+    // The update sleeps for 1 second just so that its pogression can be watched.
     //
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         if self.current_depth < self.max_depth {
@@ -75,8 +81,16 @@ impl event::EventHandler for MainState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let grey = Color::from_rgb(77, 77, 77);
+        let blue = Color::from_rgb(51, 153, 255);
+        let initial_point_blue = Point2::new(START_X, START_Y);
         clear(ctx, grey);
-        draw_lines(&self.next_gen, ctx, self.line_length)?;
+        draw_lines(
+            &self.next_gen,
+            ctx,
+            self.line_length,
+            blue,
+            initial_point_blue,
+        )?;
         present(ctx)?;
         Ok(())
     }
@@ -90,19 +104,23 @@ fn next_point(current_point: Point2<f32>, heading: f32, line_length: f32) -> Poi
     Point2::new(next_point.0, next_point.1)
 }
 
-fn draw_lines(instructions: &str, ctx: &mut Context, line_length: f32) -> GameResult {
-    let blue = Color::from_rgb(51, 153, 255);
+fn draw_lines(
+    instructions: &str,
+    ctx: &mut Context,
+    line_length: f32,
+    colour: Color,
+    initial_point: Point2<f32>,
+) -> GameResult {
     let line_width = 2.0;
     let mut heading = 0.0;
     let turn_angle = 90.0;
-    let initial_point = Point2::new(START_X, START_Y);
     let mut start_point = initial_point;
     let mut line_builder = MeshBuilder::new();
     for char in instructions.chars() {
         let end_point = next_point(start_point, heading, line_length);
         match char {
             'f' | 'h' => {
-                line_builder.line(&[start_point, end_point], line_width, blue)?;
+                line_builder.line(&[start_point, end_point], line_width, colour)?;
                 start_point = end_point;
             }
             '+' => heading += turn_angle,
